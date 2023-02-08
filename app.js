@@ -2,23 +2,40 @@ const express = require("express");
 const app = express();
 const port = 3000;
 const cors = require("cors");
+const { Client } = require("pg");
+const pgClient = new Client({
+  user: "postgres",
+  database: "glitter",
+  password: "postgres",
+  port: "5432",
+  host: "localhost",
+});
 
 app.use(cors());
 app.use(express.json());
 
-const allGlitts = [
-  { tweet: "Niko, bestere Mann!", user: "Jascha" },
-  { tweet: "AWS ist Crack!", user: "Jascha" },
-  { tweet: "Racker", user: "Niko" },
-];
+pgClient.connect();
 
 app.get("/glitts", (req, res) => {
-  res.send(allGlitts);
+  pgClient
+    .query(
+      "SELECT text, u.name FROM glitts inner join users u on u.id = user_id;"
+    )
+    .then((results) => {
+      res.send(results.rows);
+    });
 });
 
 app.post("/glitts", (req, res) => {
-  allGlitts.push(req.body);
-  res.status(201).send(req.body);
+  const { text } = req.body;
+  pgClient
+    .query(`insert into glitts(user_id, text) values($1, $2) returning *`, [
+      1,
+      text,
+    ])
+    .then((result) => {
+      res.status(201).send(result.rows[0]);
+    });
 });
 
 // app.get("/glitts/:user", (req, res) => {
